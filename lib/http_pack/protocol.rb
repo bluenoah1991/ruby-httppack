@@ -15,7 +15,7 @@ module HttpPack::Protocol
     include Constant
 
     # payload is string
-    self.encode(msg_type = 0x1, qos = 0, dup = 0, msg_id = 0, payload = nil, offset = 0, remaining_length = nil)
+    def self.encode(msg_type = 0x1, qos = 0, dup = 0, msg_id = 0, payload = nil, offset = 0, remaining_length = nil)
         if payload.present?
             remaining_length ||= payload.bytesize
         else
@@ -42,7 +42,7 @@ module HttpPack::Protocol
     end
 
     # buffer is ascii-8bit string
-    self.decode(buffer){
+    def self.decode(buffer)
         if buffer.nil?
             raise 'Buffer cannot be nil.'
         end
@@ -62,30 +62,30 @@ module HttpPack::Protocol
             total_length: 5 + remaining_length,
             payload: payload
         }
-    }
+    end
 
     private
 
-    self.encode_bytes(*bytes)
+    def self.encode_bytes(*bytes)
         bytes.pack('C*')
     end
 
     # big-endian
-    self.encode_short(val)
+    def self.encode_short(val)
         [val.to_i].pack('n')
     end
 
-    self.shift_short(buffer)
+    def self.shift_short(buffer)
         bytes = buffer.slice!(0..1)
         bytes.unpack('n').first
     end
 
-    self.shift_byte(buffer)
+    def self.shift_byte(buffer)
         buffer.slice!(0...1).unpack('C').first
     end
 
     # remove n bytes from the front of buffer
-    self.shift_data(buffer, n)
+    def self.shift_data(buffer, n)
         buffer.slice!(0...n)
     end
 end
