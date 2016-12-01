@@ -21,8 +21,8 @@ module HttpPack::LuaScripts
         "for i, k in pairs(redis.call('ZRANGE', KEYS[1]..':pq', 0, ARGV[1])) do\n" + \
             "local v = redis.call('HGET', KEYS[1]..':index', k)\n" + \
             "table.insert(t, #t + 1, v)\n" + \
-        "end" + \
-        "redis.call('ZREMRANGEBYRANK', KEYS[1]..':pq', 0, ARGV[1]))" + \
+        "end\n" + \
+        "redis.call('ZREMRANGEBYRANK', KEYS[1]..':pq', 0, ARGV[1])\n" + \
         "return t"
 
     # Remove from Indexable Priority Queue

@@ -37,4 +37,5 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency "redis", "~>3.2"
   spec.add_runtime_dependency "redis-namespace"
   spec.add_runtime_dependency "ruby_deep_clone", "~> 0.7.2"
+  spec.add_runtime_dependency 'connection_pool', '~> 2.2', '>= 2.2.1'
 end

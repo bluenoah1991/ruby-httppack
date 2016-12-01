@@ -1,22 +1,32 @@
+require 'connection_pool'
+require 'redis'
+require 'redis-namespace'
+
 class HttpPack::RedisConnection
 
     class << self
+        def symbolize_keys(h)
+            h.inject({}) do |memo, (k, v)|
+                memo[k.to_sym] = v
+            end
+        end
+
         def create(options={})
-            options = options.symbolize_keys
+            options = symbolize_keys(options)
 
             options[:url] = determine_redis_provider
 
             namespace = HttpPack.redis_namespace || 'httppack'; 
             size = HttpPack.redis_size || 5;
             pool_timeout = HttpPack.redis_pool_timeout || 1;
-            if HttpPack.network_timeout.present?
+            unless HttpPack.network_timeout.nil?
                 options[:timeout] = HttpPack.network_timeout
             end
 
             ConnectionPool.new(:timeout => pool_timeout, :size => size) do
                 client = Redis.new options
 
-                if namespace.present?
+                unless namespace.nil? && namespace.empty?
                     Redis::Namespace.new(namespace, :redis => client)
                 else
                     client

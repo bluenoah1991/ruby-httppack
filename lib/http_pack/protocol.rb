@@ -16,7 +16,7 @@ module HttpPack::Protocol
 
     # payload is string
     def self.encode(msg_type = 0x1, qos = 0, dup = 0, msg_id = 0, payload = nil, offset = 0, remaining_length = nil)
-        if payload.present?
+        unless payload.nil?
             remaining_length ||= payload.bytesize
         else
             remaining_length = 0
@@ -26,7 +26,7 @@ module HttpPack::Protocol
         buffer << encode_bytes(fixed_header)
         buffer << encode_short(msg_id)
         buffer << encode_short(remaining_length)
-        if payload.present?
+        unless payload.nil?
             buffer << payload
         end
         {
@@ -42,26 +42,29 @@ module HttpPack::Protocol
     end
 
     # buffer is ascii-8bit string
-    def self.decode(buffer)
+    def self.decode(buffer, offset = 0)
         if buffer.nil?
             raise 'Buffer cannot be nil.'
         end
-        fixed_header = shift_byte(buffer)
+        fixed_header, new_offset = sub_byte(buffer, offset)
         msg_type = fixed_header >> 4
         qos = (fixed_header & 0xf) >> 2
         dup = (fixed_header & 0x3) >> 1
-        msg_id = shift_short(buffer)
-        remaining_length = shift_short(buffer)
-        payload = shift_data(buffer, remaining_length)
-        {
+        msg_id, new_offset = sub_short(buffer, new_offset)
+        remaining_length, new_offset = sub_short(buffer, new_offset)
+        payload, new_offset = sub_data(buffer, new_offset, remaining_length)
+        cbuffer, _ = sub_data(buffer, offset, 5 + remaining_length)
+        pack = {
             msg_type: msg_type,
             qos: qos,
             dup: dup,
             msg_id: msg_id,
             remaining_length: remaining_length,
             total_length: 5 + remaining_length,
-            payload: payload
+            payload: payload,
+            buffer: cbuffer
         }
+        [pack, new_offset]
     end
 
     private
@@ -75,17 +78,17 @@ module HttpPack::Protocol
         [val.to_i].pack('n')
     end
 
-    def self.shift_short(buffer)
-        bytes = buffer.slice!(0..1)
-        bytes.unpack('n').first
+    def self.sub_short(buffer, offset)
+        bytes = buffer[offset, 2]
+        [bytes.unpack('n').first, offset + 2]
     end
 
-    def self.shift_byte(buffer)
-        buffer.slice!(0...1).unpack('C').first
+    def self.sub_byte(buffer, offset)
+        [buffer[offset, 1].unpack('C').first, offset + 1]
     end
 
-    # remove n bytes from the front of buffer
-    def self.shift_data(buffer, n)
-        buffer.slice!(0...n)
+    # fetch n bytes from the buffer
+    def self.sub_data(buffer, offset, n)
+        [buffer[offset, n], offset + n]
     end
 end

@@ -15,12 +15,12 @@ HttpPack.configure do |config|
 end
 
 app = Proc.new do |env|
-    binding.pry
     req = Rack::Request.new(env)
     body = req.body.read
-    HttpPack.parse_body('testuser', body) do |scope, payload|
+    resp = HttpPack.parse_body('testuser', body) do |scope, payload|
         binding.pry
     end
+    [200, {'Content-Type' => 'application/octet-stream'}, [resp]]
 end
 
 Rack::Handler::WEBrick.run(app, :Host => '0.0.0.0', :Port => 8080)
