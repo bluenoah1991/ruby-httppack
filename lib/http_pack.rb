@@ -74,8 +74,6 @@ module HttpPack
       end
     end
 
-    binding.pry
-
     combine(replys)
   end
 
@@ -212,7 +210,6 @@ module HttpPack
 
   def self.save(scope, pack)
     redis do |conn|
-      binding.pry
       conn.eval(PQADD, [scope], [eval_score(pack), pack[:msg_id], _encode_redis_value(pack)])
     end
   end

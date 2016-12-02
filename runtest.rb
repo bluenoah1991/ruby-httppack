@@ -14,21 +14,17 @@ HttpPack.configure do |config|
     config.max_response_number = 20
 end
 
-just_once = 0
-
 app = Proc.new do |env|
     req = Rack::Request.new(env)
     body = req.body.read
     resp = HttpPack.parse_body('testuser', body) do |scope, payload|
-        binding.pry
-        if just_once == 0
-            just_once += 1
-            # HttpPack.commit(scope, 'roger that', qos = 0)
-            # HttpPack.commit(scope, 'roger that', qos = 1)
+        puts payload
+        if payload == 'do you copy?'
+            HttpPack.commit(scope, 'roger that', qos = 0)
+            HttpPack.commit(scope, 'roger that', qos = 1)
             HttpPack.commit(scope, 'roger that', qos = 2)
         end
     end
-    binding.pry
     [200, {'Content-Type' => 'application/octet-stream'}, [resp]]
 end
 
