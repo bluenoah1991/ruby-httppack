@@ -73,14 +73,14 @@ module HttpPack::Protocol
         bytes.pack('C*')
     end
 
-    # big-endian
+    # 16-bit signed, big-endian
     def self.encode_short(val)
-        [val.to_i].pack('n')
+        [val.to_i].pack('s>')
     end
 
     def self.sub_short(buffer, offset)
         bytes = buffer[offset, 2]
-        [bytes.unpack('n').first, offset + 2]
+        [bytes.unpack('s>').first, offset + 2]
     end
 
     def self.sub_byte(buffer, offset)

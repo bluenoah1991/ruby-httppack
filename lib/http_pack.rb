@@ -59,6 +59,8 @@ module HttpPack
         end
         reply = Protocol.encode(MSG_TYPE_COMPLETED, QoS0, 0, pack[:msg_id])
         save(scope, reply)
+      elsif pack[:msg_type] == MSG_TYPE_COMPLETED
+        confirm(scope, pack[:msg_id])
       end
     end
 
@@ -72,6 +74,8 @@ module HttpPack
       end
     end
 
+    binding.pry
+
     combine(replys)
   end
 
@@ -80,10 +84,10 @@ module HttpPack
       retry_pack = nil
       if !pack[:retry_times].nil? && pack[:retry_times] > 0
         retry_pack = DeepClone.clone pack
-        retry_pack[:retry_times]++
+        retry_pack[:retry_times] += 1
         retry_pack[:timestamp] = Time.now + retry_pack[:retry_times] * 5
       else
-        retry_pack = Protocol.encode(pack.msg_type, pack[:qos], 1, pack[:msg_id], pack[:payload])
+        retry_pack = Protocol.encode(pack[:msg_type], pack[:qos], 1, pack[:msg_id], pack[:payload])
         retry_pack[:retry_times] = 1
         retry_pack[:timestamp] = Time.now + retry_pack[:retry_times] * 5
       end
@@ -92,7 +96,7 @@ module HttpPack
   end
 
   def self.commit(scope, data, qos = 0)
-    pack = Protocol.encode(MSG_TYPE_SEND, qos, 0, uniqueId, data)
+    pack = Protocol.encode(MSG_TYPE_SEND, qos, 0, uniqueId(scope), data)
     save(scope, pack)
   end
 
@@ -168,54 +172,47 @@ module HttpPack
   # Redis Operate
 
   def self._encode_redis_value(pack)
-    confirm = pack[:confirm] || 0
-    retry_times = pack[:retry_times] || 0
+    retry_times = pack[:retry_times].to_i.to_s
     timestamp = pack[:timestamp] || Time.at(0)
-    timestamp = timestamp.to_i
+    timestamp = timestamp.to_i.to_s
     buffer = ''
-    buffer << confirm << ':' << retry_times << ':'
-    buffer << timestamp << ':' << pack[:buffer]
+    buffer << retry_times << ':' << timestamp
+    buffer << ':' << pack[:buffer]
     buffer
   end
 
   def self._decode_redis_value(buffer)
-    confirm, buffer = buffer.split(':', 2)
-    if buffer.nil?
-      raise 'Error encode string'
-    end
+    buffer = buffer.force_encoding('ASCII-8BIT')
     retry_times, buffer = buffer.split(':', 2)
     if buffer.nil?
       raise 'Error encode string'
     end
+    retry_times = retry_times.to_i
     timestamp, buffer = buffer.split(':', 2)
     if buffer.nil?
       raise 'Error encode string'
     end
     timestamp = Time.at(timestamp.to_i)
-    buffer = buffer.force_encoding('ASCII-8BIT')
     pack, _ = Protocol.decode(buffer)
-    pack[:confirm] = confirm
     pack[:retry_times] = retry_times
     pack[:timestamp] = timestamp
     pack
   end
 
   def self.eval_score(pack)
-    confirm = pack[:confirm] || 0
     timestamp = pack[:timestamp] || Time.at(0)
     timestamp = timestamp.to_i
-    if confirm then timestamp else 0 end
   end
 
   def self.uniqueId(scope)
     redis do |conn|
-      conn.incr("#{scope}:uniqueid")
+      conn.decr("#{scope}:uniqueid")
     end
   end
 
   def self.save(scope, pack)
-    pack[:confirm] = false
     redis do |conn|
+      binding.pry
       conn.eval(PQADD, [scope], [eval_score(pack), pack[:msg_id], _encode_redis_value(pack)])
     end
   end
