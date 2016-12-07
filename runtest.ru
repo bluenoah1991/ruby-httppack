@@ -1,4 +1,5 @@
 require 'rack'
+require 'rack/cors'
 require 'pry'
 
 $LOAD_PATH.unshift File.expand_path('../lib', __FILE__)
@@ -14,7 +15,14 @@ HttpPack.configure do |config|
     config.max_response_number = 20
 end
 
-app = Proc.new do |env|
+use Rack::Cors do
+    allow do
+        origins '*'
+        resource '*'
+    end
+end
+
+run Proc.new {|env|
     req = Rack::Request.new(env)
     body = req.body.read
     resp = HttpPack.parse_body('testuser', body) do |scope, payload|
@@ -26,6 +34,4 @@ app = Proc.new do |env|
         end
     end
     [200, {'Content-Type' => 'application/octet-stream'}, [resp]]
-end
-
-Rack::Handler::WEBrick.run(app, :Host => '0.0.0.0', :Port => 8080)
+}
