@@ -237,7 +237,7 @@ module HttpPack
 
   def self.release(scope, msg_id)
     redis do |conn|
-      conn.hget("#{scope}:payloads", msg_id)
+      conn.eval(HPOP, ["#{scope}:payloads", msg_id])
     end
   end
 
